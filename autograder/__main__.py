@@ -166,14 +166,14 @@ def stats(force=False):
             print(' - Created At: ' + grade['createdAt'])
             print(' - Updated At: ' + grade['updatedAt'])
             details = grade['details']
-            t = [['Hola', 0]]
+            t = []
             for d in details:
-                t.append([d['name'], d['grade']])
+                t.append([d['name'], d['grade'], d['message']])
             if len(t) > 0:
                 print('')
                 print('Details:')
                 print('')
-                print(tabulate(t, headers=['Name', 'Grade'], tablefmt="fancy_grid"))
+                print(tabulate(t, headers=['Name', 'Grade', 'Message'], tablefmt="fancy_grid"))
             stdout = grade['stdout'].strip()
             if stdout != '':
                 print('')
