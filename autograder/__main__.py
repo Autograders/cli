@@ -45,7 +45,8 @@ __TITLE__ = '''
                Autograders.org
 '''
 
-TEST = True
+# Test flag
+TEST = False
 # API URL
 API_URL = 'http://localhost:8080' if TEST else 'https://api.autograders.org'
 # Sign Up URL
