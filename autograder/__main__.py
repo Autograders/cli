@@ -114,7 +114,7 @@ def register():
         else:
             print(' [*] Success: ' + data['message'])
             sys.exit(0)
-    except:
+    except Exception:
         print(' [*] Fatal: Could not register user')
         sys.exit(1)
 
