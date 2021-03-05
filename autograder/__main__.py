@@ -29,8 +29,8 @@ __TITLE__ = '''
 
    ___       __                        __
   / _ |__ __/ /____  ___ ________ ____/ /__ _______
- / __ / // / __/ _ \/ _ `/ __/ _ `/ _  / -_) __(_-<
-/_/ |_\_,_/\__/\___/\_, /_/  \_,_/\_,_/\__/_/ /___/
+ / __ / // / __/ _ \\/ _ `/ __/ _ `/ _  / -_) __(_-<
+/_/ |_\\_,_/\\__/\\___/\\_, /_/  \\_,_/\\_,_/\\__/_/ /___/
                    /___/
 
             Command Line Interface
@@ -42,15 +42,19 @@ TEST = False
 # API URL
 API_URL = 'http://localhost:8080' if TEST else 'https://api.autograders.org'
 # Sign Up URL
-SIGN_UP_URL = f'{API_URL}/auth/signup'
+SIGN_UP_URL = f'{API_URL}/user'
+# Verify URL
+VERIFY_URL = f'{API_URL}/user/verify'
 # Sign In URL
 SIGN_IN_URL = f'{API_URL}/auth/signin'
 # Upload task URL
-UPLOAD_TASK_URL = f'{API_URL}/task/upload'
+UPLOAD_TASK_URL = f'{API_URL}/submit'
 # Get Task URL
 GET_TASK_URL = f'{API_URL}/task/%s'
+# Pin URL
+PIN_URL = f'{API_URL}/pin'
 # Task stats URL
-TASK_STATS_URL = f'{API_URL}/task/stats/%s'
+TASK_STATS_URL = f'{API_URL}/submit/%s?type=last'
 # Autograder directory
 AUTOGRADER_DIR = '.autograder'
 # Autograder config file
@@ -100,7 +104,54 @@ def register():
         print('')
         r = requests.post(SIGN_UP_URL, json=payload)
         data = r.json()
-        if r.status_code != 200:
+        if r.status_code != 201:
+            print(' [*] Error: ' + data['message'])
+            sys.exit(1)
+        else:
+            print(' [*] Success: ' + data['message'])
+            sys.exit(0)
+    except Exception:
+        print(' [*] Fatal: Could not register user')
+        sys.exit(1)
+
+
+def pin():
+    try:
+        print(__TITLE__)
+        print('Generate New Pin Code')
+        print('')
+        # set payload
+        payload = {
+            'email': input(' - Email: ').strip(),
+        }
+        print('')
+        r = requests.post(PIN_URL, json=payload)
+        data = r.json()
+        if r.status_code != 201:
+            print(' [*] Error: ' + data['message'])
+            sys.exit(1)
+        else:
+            print(' [*] Success: ' + data['message'])
+            sys.exit(0)
+    except Exception:
+        print(' [*] Fatal: Could not generate a new pin code')
+        sys.exit(1)
+
+
+def verify():
+    try:
+        print(__TITLE__)
+        print('User Verification')
+        print('')
+        # set payload
+        payload = {
+            'email': input(' - Email: ').strip(),
+            'code': getpass(' - Pin Code: ').strip()
+        }
+        print('')
+        r = requests.post(VERIFY_URL, json=payload)
+        data = r.json()
+        if r.status_code != 201:
             print(' [*] Error: ' + data['message'])
             sys.exit(1)
         else:
@@ -127,11 +178,11 @@ def login(force=False):
         print('')
         r = requests.post(SIGN_IN_URL, json=payload)
         data = r.json()
-        if r.status_code != 200:
+        if r.status_code != 201:
             print(' [*] Error: ' + data['message'])
             sys.exit(1)
         else:
-            user_id = data['id']
+            user_id = data['user_attributes']['id']
             token = data['access_token']
             write_file('auth', f'{user_id}|{token}')
             return user_id, token
@@ -150,9 +201,8 @@ def stats(force=False):
         user_id, token = login(force=force)
         headers = { 'Authorization': token }
         r = requests.get(TASK_STATS_URL % task_id, headers=headers)
-        data = r.json()
+        grade = r.json()
         if r.status_code == 200:
-            grade = data['grade']
             print(' - Queued: %s' % grade['queued'])
             print(' - Grade: %.2f/100' % grade['grade'] )
             print(' - Created At: ' + grade['createdAt'])
@@ -181,10 +231,9 @@ def stats(force=False):
         elif not force and (r.status_code == 401 or r.status_code == 403):
             stats(force=True)
         else:
-            print(' [*] Error: ' + data['message'])
+            print(' [*] Error: ' + grade['message'])
             sys.exit(1)
     except Exception as e:
-        print(e)
         print(' [*] Fatal: Could not get task stats')
         sys.exit(1)
 
@@ -197,7 +246,7 @@ def get_task_files(config, force=False):
         r = requests.get(GET_TASK_URL % task_id, headers=headers)
         data = r.json()
         if r.status_code == 200:
-            return data['task']['files']
+            return data['files']
         elif not force and (r.status_code == 401 or r.status_code == 403):
             return get_task_files(config, force=True)
         else:
@@ -234,10 +283,10 @@ def upload(force=False):
         user_id, token = login(force=force)
         headers = { 'Authorization': token }
         f, filename = zip_files(files, task_id, user_id)
-        files = { 'task': f }
+        files = { 'file': f }
         r = requests.post(UPLOAD_TASK_URL, files=files, headers=headers)
         data = r.json()
-        if r.status_code == 200:
+        if r.status_code == 201:
             print(' [*] Success: ' + data['message'])
         elif not force and (r.status_code == 401 or r.status_code == 403):
             upload(force=True)
@@ -258,8 +307,13 @@ def autograder(args):
             stats()
         elif args.register:
             register()
+        elif args.verify:
+            verify()
+        elif args.pin:
+            pin()
     except KeyboardInterrupt:
-        pass
+        print()
+        print()
 
 
 def main():
@@ -267,6 +321,8 @@ def main():
     parser.add_argument('--upload', action='store_true', help='Upload files to autograder')
     parser.add_argument('--stats', action='store_true', help='Get task stats')
     parser.add_argument('--register', action='store_true', help='Register user')
+    parser.add_argument('--verify', action='store_true', help='Verify user')
+    parser.add_argument('--pin', action='store_true', help='Send a new pin code')
     args = parser.parse_args()
     autograder(args)
 

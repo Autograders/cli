@@ -22,7 +22,7 @@ README = (pathlib.Path(__file__).parent / "README.md").read_text()
 setuptools.setup(
     license='MIT',
     name='autograders-cli',
-    version='1.0.3',
+    version='1.1.0',
     author='Andrés Castellanos',
     author_email='andres.cv@galileo.edu',
     description='Autograders Command Line Interface',
